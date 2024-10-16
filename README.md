@@ -12,6 +12,15 @@
 - ‼️ Disclaimer: While this modification does not target anything specifically, shuffling the layers in a transformer may lead to unexpected / unintended consequences. DO NOT DEPLOY + blame me (or Meta) for it. RESEARCH / personal learning use ONLY. ⚠️
 
 ----
+Example output: Translation of prompt + adding details. No shuffling; normal model:
+
+![does-as-told](https://github.com/user-attachments/assets/9e05bce5-877e-42e6-9b33-9a280924ed85)
+
+And now, with Attn shuffling -- pure GPT-3 style madness:
+
+![this-madness-of-yours](https://github.com/user-attachments/assets/f34bdce9-fb7c-4263-9712-b99371b5bf39)
+
+-----
 Example output: Llama-3.2-1B-Instruct with shuffled Attention in Layers 6,7,8. Quote:
 - 🤖: I am the creation of the scene you have the ability to see. I am a dark, sleek model of efficiency. Here is your image for efficiency.
 
