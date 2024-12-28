@@ -6,7 +6,7 @@ import time
 import copy
 from transformers import LlamaForCausalLM, AutoTokenizer
 from transformers import pipeline
-
+import comfy.model_management as mm
 
 class LLama3ShuffleBase:
     def __init__(self, load_from_file=False):
@@ -81,6 +81,7 @@ class LLama3ShuffleNode(LLama3ShuffleBase):
                 "max_response_length": ("INT", {"default": 128, "min": 50, "max": 1024}),
                 "LLama3_model": (["meta-llama/Llama-3.2-1B", "meta-llama/Llama-3.2-1B-Instruct"], {"default": "meta-llama/Llama-3.2-1B-Instruct"}),
                 "load_from_file": (["False", "True"], {"default": "True"}),
+                "force_offload": ("BOOLEAN", {"default": True}),
                 "instruct_system_prompt": ("STRING", {"default": "You are a helpful assistant. You describe the image in great detail, focusing on lighting, mood, scene, details, subjects, and colors. Do not add anything else; only respond with the image description.", "multiline": True}),
                 "shuffle_setting": (["None", "Attn", "Layer", "MLP", "LN_Identity"], {"default": "None"}),
                 "shuffle_layer_range": ("STRING", {"default": "6,7,8"}),
@@ -96,11 +97,12 @@ class LLama3ShuffleNode(LLama3ShuffleBase):
     CATEGORY = "zer0int/LLama3-Shuffle"
     
    
-    def generate(self, text, max_response_length, LLama3_model, load_from_file, instruct_system_prompt, shuffle_setting, shuffle_layer_range, temperature, top_p, no_repeat_ngram_size):
+    def generate(self, text, max_response_length, LLama3_model, load_from_file, force_offload, instruct_system_prompt, shuffle_setting, shuffle_layer_range, temperature, top_p, no_repeat_ngram_size):
         
         self.load_from_file = load_from_file == "True"
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+        device = mm.get_torch_device()
+        offload_device = mm.unet_offload_device()
+        
         modelorg = self.get_original_model(LLama3_model) 
         model = modelorg.model
 
@@ -183,7 +185,10 @@ class LLama3ShuffleNode(LLama3ShuffleBase):
             output_texts = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
             new_prompt = output_texts[0].strip()
             new_prompt = new_prompt.replace(text, "").strip()
-
+            
+            if force_offload:
+                model.to(offload_device)
+                mm.soft_empty_cache()
 
         elif LLama3_model == "meta-llama/Llama-3.2-1B-Instruct":
             self.tokenizer = AutoTokenizer.from_pretrained(LLama3_model)
@@ -224,7 +229,11 @@ class LLama3ShuffleNode(LLama3ShuffleBase):
             clean_content = assistant_content.replace("\n", " ")
             clean_content = clean_content.replace("  ", " ")
             new_prompt = clean_content
-   
+            
+            if force_offload:
+                model.to(offload_device)
+                mm.soft_empty_cache()
+        
         timestamp = time.time()  
     
         if error_prompt != "empty":
